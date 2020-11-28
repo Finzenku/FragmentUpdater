@@ -5,7 +5,7 @@ namespace FragmentUpdater.Models
     public static class DotHackFiles
     {
         public static DotHackFile GCMNO { get; } = new DotHackFile { FileName = "GCMNO.PRG", LiveMemoryOffset = 0x78CB80 };
-        public static DotHackFile GCMNF { get; } = new DotHackFile { FileName = "GCMNF.PRG", LiveMemoryOffset = 0 };
+        public static DotHackFile GCMNF { get; } = new DotHackFile { FileName = "GCMNF.PRG", LiveMemoryOffset = 0x537600 };
         public static DotHackFile HACK1 { get; } = new DotHackFile { FileName = "HACK_01.ELF", LiveMemoryOffset = 0xFFF00 };
         public static DotHackFile HACK0 { get; } = new DotHackFile { FileName = "HACK_00.ELF", LiveMemoryOffset = 0xFFF00 };
         public static DotHackFile MATCHING { get; } = new DotHackFile { FileName = "MATCHING.PRG", LiveMemoryOffset = 0x78CB80 };

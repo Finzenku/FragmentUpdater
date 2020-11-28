@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using FragmentUpdater.Connections;
 using FragmentUpdater.Models;
@@ -13,7 +14,7 @@ namespace FragmentUpdater
     {
 
         static Encoding enc;
-
+        private static Dictionary<string, Dictionary<int, int>> textPointerDictionaries;
 
         static void Main(string[] args)
         {
@@ -46,6 +47,8 @@ namespace FragmentUpdater
                    outputISO = @".\fragmentVi.iso";
 #endif
 
+            textPointerDictionaries = new Dictionary<string, Dictionary<int, int>>();
+
             if (File.Exists(inputISO))
                 CopyFile(inputISO, outputISO);
             else if (File.Exists($"{inputISO}.iso"))
@@ -58,6 +61,11 @@ namespace FragmentUpdater
                 Trace.WriteLine("Reading patches from google..");
                 foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet())
                     UpdateISO(outputISO, obj);
+#if DEBUG
+                Trace.WriteLine("Reading WIP patches from google..");
+                foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("WIP Patches"))
+                    UpdateISO(outputISO, obj);
+#endif
                 Trace.WriteLine("ISO patched successfully!");
             }
             else
@@ -85,40 +93,46 @@ namespace FragmentUpdater
                 Dictionary<int, int> offsetPairs = new Dictionary<int, int>();
                 if (objectType.TextSheetName != "None")
                 {
-                    Trace.WriteLine($"Patching {objectType.Name} Text..");
-                    var objText = GoogleReader.GetNewStringsFromSheet($"{objectType.TextSheetName}");
-                    int newoff = 0;
-                    foreach (KeyValuePair<int, string> kvp in objText)
+                    //If we already made the text pointer dictionary we don't need to redo any of this
+                    if (!textPointerDictionaries.TryGetValue(objectType.TextSheetName, out offsetPairs))
                     {
-                        if (objectType.PointerOffsets.Length == 0)
+                        Trace.WriteLine($"Patching {objectType.Name} Text..");
+                        Dictionary<int, string> objText = GoogleReader.GetNewStringsFromSheet($"{objectType.TextSheetName}");
+                        offsetPairs = new Dictionary<int, int>();
+                        int newoff = 0;
+                        foreach (KeyValuePair<int, string> kvp in objText)
                         {
-                            newoff = kvp.Key;
+                            if (objectType.PointerOffsets.Length == 0)
+                            {
+                                newoff = kvp.Key;
+                            }
+                            if (!offsetPairs.ContainsKey(kvp.Key))
+                            {
+                                offsetPairs.Add(kvp.Key, newoff);
+                            }
+                            if (writeOffline)
+                            {
+                                bw.BaseStream.Position = objectType.OfflineFile.ISOLocation + objectType.OfflineStringBaseAddress + newoff;
+                                bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0")));
+                            }
+                            if (writeOnline)
+                            {
+                                bw.BaseStream.Position = objectType.OnlineFile.ISOLocation + objectType.OnlineStringBaseAddress + newoff;
+                                //Trace.WriteLine($"{(objectType.OnlineStringBaseAddress + newoff).ToString("X")} => {kvp.Value}");
+                                bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0")));
+                            }
+                            newoff += enc.GetBytes(kvp.Value).Length;
+                            if (newoff > objectType.StringByteLimit)
+                                Trace.WriteLine("Writing outside string bounds");
+                            //Trace.WriteLine(objectType.OnlineStringBaseAddress.ToString("X8") +" "+newoff.ToString("X8"));
                         }
-                        if (!offsetPairs.ContainsKey(kvp.Key))
-                        {
-                            offsetPairs.Add(kvp.Key, newoff);
-                        }
-                        if (writeOffline)
-                        {
-                            bw.BaseStream.Position = objectType.OfflineFile.ISOLocation + objectType.OfflineStringBaseAddress + newoff;
-                            bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0")));
-                        }
-                        if (writeOnline)
-                        {
-                            bw.BaseStream.Position = objectType.OnlineFile.ISOLocation + objectType.OnlineStringBaseAddress + newoff;
-                            //Trace.WriteLine($"{(objectType.OnlineStringBaseAddress + newoff).ToString("X")} => {kvp.Value}");
-                            bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0")));
-                        }
-                        newoff += enc.GetBytes(kvp.Value).Length;
-                        if (newoff > objectType.StringByteLimit)
-                            Trace.WriteLine("Writing outside string bounds");
-                        //Trace.WriteLine(objectType.OnlineStringBaseAddress.ToString("X8") +" "+newoff.ToString("X8"));
+                        textPointerDictionaries.Add(objectType.TextSheetName,offsetPairs);
                     }
                 }
 
                 if (objectType.DataSheetName != "None")
                 {
-                    Trace.WriteLine($"Patching {objectType.Name} Data..");
+                    Trace.WriteLine($"Patching {objectType.Name} Pointers..");
                     var objs = GoogleReader.GetObjectsFromSheet($"{objectType.DataSheetName}");
                     foreach (KeyValuePair<int, List<int>> kvp in objs)
                     {
@@ -164,33 +178,39 @@ namespace FragmentUpdater
 
         private static int GetFileLocation(string directory, string fileName)
         {
-
+            byte[] nameBytes = enc.GetBytes(fileName);
             using (FileStream stream = File.Open(directory, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
-            using (StreamReader sr = new StreamReader(stream))
+            using (BinaryReader br = new BinaryReader(stream))
             {
-                sr.BaseStream.Position = 0x80000;
-                char[] buffer = new char[0x800];
+                br.BaseStream.Position = 0x80000;
+                byte[] buffer = new byte[0x800];
                 for (int i = 0; i < 125; i++)
                 {
-                    sr.BaseStream.Position = 0x80000 + i * 0x800;
-                    int pos = (int)sr.BaseStream.Position;
-                    sr.ReadBlock(buffer, 0, 0x800);
-                    string s = new string(buffer);
-                    if (s.Contains(fileName))
+                    br.BaseStream.Position = 0x80000 + i * 0x800;
+                    int pos = (int)br.BaseStream.Position;
+                    buffer = br.ReadBytes(0x800);
+                    int filePos = Search(buffer, nameBytes);
+                    if (filePos >= 0)
                     {
-                        using (BinaryReader br = new BinaryReader(stream))
-                        {
-                            br.BaseStream.Position = pos + s.IndexOf(fileName);// - 0x1F;
-                            byte d = br.ReadByte();
-                            if (d == (byte)0x0D)
-                                br.BaseStream.Position -= 0x1F;
-                            else
-                                br.BaseStream.Position -= 0x20;
-                            int res = br.ReadInt32() * 0x800;
-                            return res;
-                        }
+                        br.BaseStream.Position = pos + filePos - 0x1F;
+                        int res = br.ReadInt32() * 0x800;
+                        return res;
                     }
                 }
+            }
+            Trace.WriteLine($"Could not find file: {fileName}");
+            return -1;
+        }
+
+        private static int Search(byte[] src, byte[] pattern)
+        {
+            int c = src.Length - pattern.Length + 1;
+            int j;
+            for (int i = 0; i < c; i++)
+            {
+                if (src[i] != pattern[0]) continue;
+                for (j = pattern.Length - 1; j >= 1 && src[i + j] == pattern[j]; j--) ;
+                if (j == 0) return i;
             }
             return -1;
         }

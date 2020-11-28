@@ -19,7 +19,7 @@ namespace FragmentUpdater.Connections
         private static SheetsService service;
         private static GoogleCredential credential;
 
-        public static List<DotHackObject> GetObjectsFromPatchSheet()
+        public static List<DotHackObject> GetObjectsFromPatchSheet(string patchSheet = "Patches")
         {
             List<DotHackObject> objects = new();
 
@@ -35,7 +35,7 @@ namespace FragmentUpdater.Connections
             }))
             {
                 var stringsByOffset = new Dictionary<int, string>();
-                var range = $"Patches!A2:V";
+                var range = $"{patchSheet}!A2:V";
                 var request = service.Spreadsheets.Values.Get(SpreadsheetId, range);
                 var response = request.Execute();
                 var values = response.Values;
