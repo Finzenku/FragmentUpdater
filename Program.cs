@@ -60,11 +60,15 @@ namespace FragmentUpdater
             {
                 Trace.WriteLine("Reading patches from google..");
                 foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet())
+                {
                     UpdateISO(outputISO, obj);
+                }
 #if DEBUG
                 Trace.WriteLine("Reading WIP patches from google..");
                 foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("WIP Patches"))
+                {
                     UpdateISO(outputISO, obj);
+                }
 #endif
                 Trace.WriteLine("ISO patched successfully!");
             }
@@ -113,17 +117,17 @@ namespace FragmentUpdater
                             if (writeOffline)
                             {
                                 bw.BaseStream.Position = objectType.OfflineFile.ISOLocation + objectType.OfflineStringBaseAddress + newoff;
-                                bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0")));
+                                bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
                             }
                             if (writeOnline)
                             {
                                 bw.BaseStream.Position = objectType.OnlineFile.ISOLocation + objectType.OnlineStringBaseAddress + newoff;
                                 //Trace.WriteLine($"{(objectType.OnlineStringBaseAddress + newoff).ToString("X")} => {kvp.Value}");
-                                bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0")));
+                                bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
                             }
                             newoff += enc.GetBytes(kvp.Value).Length;
                             if (newoff > objectType.StringByteLimit)
-                                Trace.WriteLine("Writing outside string bounds");
+                                Trace.WriteLine("Writing outside string bounds!");
                             //Trace.WriteLine(objectType.OnlineStringBaseAddress.ToString("X8") +" "+newoff.ToString("X8"));
                         }
                         textPointerDictionaries.Add(objectType.TextSheetName,offsetPairs);
