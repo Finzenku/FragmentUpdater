@@ -20,7 +20,6 @@ namespace FragmentUpdater
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             enc = Encoding.GetEncoding(932);
-            Console.OutputEncoding = enc;
             Trace.Listeners.Clear();
 
             TextWriterTraceListener twt1 = new(@".\ViPatchLog.txt");
@@ -43,21 +42,36 @@ namespace FragmentUpdater
                    inputISO = vanillaISO,
                    outputISO = @"P:\DotHack\Fragment\Tellipatch\fragmentCopy.iso";
 #else
-            string inputISO = @".\fragment.iso",
-                   outputISO = @".\fragmentVi.iso";
+            string inputISO, outputISO;
+            if (args.Length == 0)
+            {
+                inputISO = @".\fragment.iso";
+                outputISO = @".\fragmentVi.iso";
+            }
+            else if (args.Length == 1)
+            {
+                inputISO = CheckFilePath(args[0]);
+                outputISO = inputISO;
+            }
+            else
+            {
+                inputISO = CheckFilePath(args[0]);
+                outputISO = CheckFilePath(args[1]);
+            }
 #endif
 
             textPointerDictionaries = new Dictionary<string, Dictionary<int, int>>();
-
-            if (File.Exists(inputISO))
-                CopyFile(inputISO, outputISO);
-            else if (File.Exists($"{inputISO}.iso"))
-                CopyFile($"{inputISO}.iso", outputISO);
-            else
-                Trace.WriteLine("Could not find fragment.iso in the current directory.");
+            if (inputISO != outputISO)
+            {
+                if (File.Exists(inputISO))
+                    CopyFile(inputISO, outputISO);
+                else
+                    Trace.WriteLine($"Could not find input file \"{inputISO}\" in the current directory.");
+            }
 
             if (File.Exists(outputISO))
             {
+                Trace.WriteLine($"Writing patches to: {outputISO}");
                 Trace.WriteLine("Reading patches from google..");
                 foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet())
                 {
@@ -74,7 +88,7 @@ namespace FragmentUpdater
             }
             else
             {
-                Trace.WriteLine("The output ISO was not created properly.");
+                Trace.WriteLine($"Could not find output file \"{outputISO}\" in the current directory.");
             }
         }
 
@@ -180,6 +194,24 @@ namespace FragmentUpdater
             }
         }
 
+        private static string CheckFilePath(string fileName)
+        {
+            if (fileName.Contains(@"\"))
+            {
+                if (fileName.Contains(".iso"))
+                    return fileName;
+                else
+                    return fileName = $"{fileName}.iso";
+            }
+            else
+            {
+                if (fileName.Contains(".iso"))
+                    return fileName = @".\" + fileName;
+                else
+                    return fileName = @".\" + fileName + ".iso";
+            }
+        }
+
         private static int GetFileLocation(string directory, string fileName)
         {
             byte[] nameBytes = enc.GetBytes(fileName);
@@ -249,7 +281,7 @@ namespace FragmentUpdater
                 File.Delete(outputFilePath);
             int bufferSize = 1024 * 1024;
             int progress = 0;
-            Trace.WriteLine("Copying ISO...");
+            Trace.WriteLine($"Copying {inputFilePath} to {outputFilePath}");
             using (FileStream fileStream = new FileStream(outputFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
             {
                 FileStream fs = new FileStream(inputFilePath, FileMode.Open, FileAccess.ReadWrite);
