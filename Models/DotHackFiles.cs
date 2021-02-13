@@ -12,11 +12,12 @@ namespace FragmentUpdater.Models
         public static DotHackFile DESKTOPF { get; } = new DotHackFile { FileName = "DESKTOPF.PRG", LiveMemoryOffset = 0x537600 };
         public static DotHackFile TOPPAGEF { get; } = new DotHackFile { FileName = "TOPPAGEF.PRG", LiveMemoryOffset = 0x537600 };
         public static DotHackFile MATCHING { get; } = new DotHackFile { FileName = "MATCHING.PRG", LiveMemoryOffset = 0x78CB80 };
+        public static DotHackFile DATA { get; } = new DotHackFile { FileName = "DATA.BIN", LiveMemoryOffset = 0 };
         public static DotHackFile NONE { get; } = new DotHackFile { FileName = "NONE", LiveMemoryOffset = 0 };
 
         public static List<DotHackFile> GetFiles()
         {
-            return new List<DotHackFile>() { SLUS, GCMNO, GCMNF, HACK0, HACK1, DESKTOPF, TOPPAGEF, MATCHING };
+            return new List<DotHackFile>() { SLUS, GCMNO, GCMNF, HACK0, HACK1, DESKTOPF, TOPPAGEF, MATCHING, DATA };
         }
 
         public static DotHackFile GetFileByName(string fileName)
@@ -31,6 +32,7 @@ namespace FragmentUpdater.Models
                 "DESKTOPF.PRG" => DESKTOPF,
                 "TOPPAGEF.PRG" => TOPPAGEF,
                 "MATCHING.PRG" => MATCHING,
+                "DATA.BIN" => DATA,
                 _ => NONE
             };
         }

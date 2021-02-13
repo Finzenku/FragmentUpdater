@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using FragmentUpdater.Connections;
 using FragmentUpdater.Models;
@@ -37,16 +38,18 @@ namespace FragmentUpdater
 #if DEBUG
             string vanillaISO = @"P:\DotHack\Fragment\Tellipatch\fragment.iso",
                    coldbirdISO = @"P:\DotHack\Fragment\Fragment (Coldbird v08.13).iso",
-                   telliISO = @"P:\DotHack\Fragment\Tellipatch\dotHack Fragment (0.9).iso",
+                   telliISO = @"P:\DotHack\Fragment\Tellipatch\dotHack Fragment (0.91 DEV).iso",
                    aliceISO = @"P:\DotHack\Fragment\Tellipatch\fragmentAlice.iso",
                    inputISO = vanillaISO,
                    outputISO = @"P:\DotHack\Fragment\Tellipatch\fragmentCopy.iso";
 #else
-            string inputISO, outputISO;
+            string inputISO, outputISO, loc = Assembly.GetExecutingAssembly().Location;
+            if (loc == "")
+                loc = @".\";
             if (args.Length == 0)
             {
-                inputISO = @".\fragment.iso";
-                outputISO = @".\fragmentVi.iso";
+                inputISO = Path.Combine(Path.GetDirectoryName(loc), "fragment.iso");
+                outputISO = Path.Combine(Path.GetDirectoryName(loc), "fragmentVi.iso");
             }
             else if (args.Length == 1)
             {
@@ -68,7 +71,6 @@ namespace FragmentUpdater
                 else
                     Trace.WriteLine($"Could not find input file \"{inputISO}\" in the current directory.");
             }
-
             if (File.Exists(outputISO))
             {
                 Trace.WriteLine($"Writing patches to: {outputISO}");
@@ -80,6 +82,11 @@ namespace FragmentUpdater
 #if DEBUG
                 Trace.WriteLine("Reading WIP patches from google..");
                 foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("WIP Patches"))
+                {
+                    UpdateISO(outputISO, obj);
+                }
+                Trace.WriteLine("Reading WIP image patches from google..");
+                foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("IMG Patches"))
                 {
                     UpdateISO(outputISO, obj);
                 }
@@ -150,14 +157,14 @@ namespace FragmentUpdater
 
                 if (objectType.DataSheetName != "None")
                 {
-                    Trace.WriteLine($"Patching {objectType.Name} Pointers..");
+                    Trace.WriteLine($"Patching {objectType.Name} Data..");
                     var objs = GoogleReader.GetObjectsFromSheet($"{objectType.DataSheetName}");
                     foreach (KeyValuePair<int, List<int>> kvp in objs)
                     {
                         for (int i = 0; i < kvp.Value.Count; i++)
                         {
                             int p = kvp.Value[i];
-                            if (p > 0)
+                            if (p != -1)
                             {
                                 //If an object has no text associated, we write the value data directly to the address
                                 if (offsetPairs.Count == 0)
@@ -196,19 +203,22 @@ namespace FragmentUpdater
 
         private static string CheckFilePath(string fileName)
         {
-            if (fileName.Contains(@"\"))
+            if (fileName.Contains(@"\") || fileName.Contains(@"/"))
             {
                 if (fileName.Contains(".iso"))
                     return fileName;
                 else
-                    return fileName = $"{fileName}.iso";
+                    return $"{fileName}.iso";
             }
             else
             {
+                string loc = Assembly.GetExecutingAssembly().Location;
+                if (loc == "")
+                    loc = @".\";
                 if (fileName.Contains(".iso"))
-                    return fileName = @".\" + fileName;
+                    return Path.Combine(Path.GetDirectoryName(loc), fileName);
                 else
-                    return fileName = @".\" + fileName + ".iso";
+                    return Path.Combine(Path.GetDirectoryName(loc), $"{fileName}.iso");
             }
         }
 
