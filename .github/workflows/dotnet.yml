@@ -32,7 +32,7 @@ jobs:
       - name: Zip builds
         shell: bash
         working-directory: ${{github.workspace}}/
-        run: sh ./archiveScripts.sh
+        run: sh ${{github.workspace}}/archiveScripts.sh
       - name: Upload a Windows Build Artifact
         uses: actions/upload-artifact@v2.2.2
         with:
