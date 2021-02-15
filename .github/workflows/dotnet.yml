@@ -17,12 +17,12 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 5.0.x
+        env:
+          SHEET_SERVICE_ACCOUNT: ${{SHEET_SERVICE_ACCOUNT}}  
       - name: Restore dependencies
         run: dotnet restore
       - name: Build Project
-        env:
-          SHEET_SERVICE_ACCOUNT: ${{SHEET_SERVICE_ACCOUNT}}
-          run: dotnet build -c Release --no-restore
+        run: dotnet build -c Release --no-restore
       - name: Build Windows files
         run: dotnet publish -r win-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore
       - name: Build Mac files
