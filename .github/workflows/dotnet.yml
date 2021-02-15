@@ -18,7 +18,7 @@ jobs:
         with:
           dotnet-version: 5.0.x
         env:
-          SHEET_SERVICE_ACCOUNT: ${{SHEET_SERVICE_ACCOUNT}}  
+          SHEET_SERVICE_ACCOUNT: ${{secrets.SHEET_SERVICE_ACCOUNT}}  
       - name: Restore dependencies
         run: dotnet restore
       - name: Build Project
