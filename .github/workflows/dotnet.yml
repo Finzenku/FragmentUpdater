@@ -1,0 +1,35 @@
+name: .NET
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - shell: bash
+        env:
+          SHEET_SERVICE_ACCOUNT: ${{SHEET_SERVICE_ACCOUNT}}
+      - uses: actions/checkout@v2
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build Project
+        run: dotnet build -c Release --no-restore
+      - name: Build Windows files
+        run: dotnet publish -r win-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore
+      - name: Build Mac files
+        run: dotnet publish -r osx-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore
+      - name: Build Linux files
+        run: dotnet publish -r linux-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore
+      
+    #- name: Test
+    #  run: dotnet test --no-build --verbosity normal
