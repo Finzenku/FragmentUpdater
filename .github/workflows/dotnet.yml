@@ -12,9 +12,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - shell: bash
-        env:
-          SHEET_SERVICE_ACCOUNT: ${{SHEET_SERVICE_ACCOUNT}}
       - uses: actions/checkout@v2
       - name: Setup .NET
         uses: actions/setup-dotnet@v1
@@ -23,7 +20,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
       - name: Build Project
-        run: dotnet build -c Release --no-restore
+        env:
+          SHEET_SERVICE_ACCOUNT: ${{SHEET_SERVICE_ACCOUNT}}
+          run: dotnet build -c Release --no-restore
       - name: Build Windows files
         run: dotnet publish -r win-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore
       - name: Build Mac files
