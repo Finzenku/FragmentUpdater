@@ -31,9 +31,7 @@ jobs:
         run: dotnet publish -r linux-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore
       - name: Zip builds
         shell: bash
-        run: |
-        chmod +x archiveScript.sh
-        ./archiveScripts.sh
+        run: sh ./archiveScripts.sh
       - name: Upload a Windows Build Artifact
         uses: actions/upload-artifact@v2.2.2
         with:
