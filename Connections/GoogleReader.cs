@@ -14,8 +14,8 @@ namespace FragmentUpdater.Connections
     {
         static readonly string[] Scopes = { SheetsService.Scope.Spreadsheets };
         static readonly string ApplicationName = "Fragment Updater";
-        static readonly string ConnectionJson = "FragmentUpdater.Connections.fragment_strings.json";
-        static readonly string SpreadsheetId = "1vQvaTQXel9jUuUt-GwZZCcGi-JKyhm-LE6MKdIXKxIA";
+        //static readonly string ConnectionJson = "FragmentUpdater.Connections.fragment_strings.json";
+        static readonly string SpreadsheetId = "1_HIw9WKh9WnhMEWQb37YKXmLMu9kuVQY5UWHTllVPL8";
         private static SheetsService service;
         private static GoogleCredential credential;
 
@@ -24,10 +24,12 @@ namespace FragmentUpdater.Connections
             List<DotHackObject> objects = new();
 
             var assembly = Assembly.GetExecutingAssembly();
-            using (Stream stream = assembly.GetManifestResourceStream(ConnectionJson))
+            credential = GoogleCredential.FromJson(Environment.GetEnvironmentVariable("SHEET_SERVICE_ACCOUNT"));
+            
+            /*using (Stream stream = assembly.GetManifestResourceStream(ConnectionJson))
             {
                 credential = GoogleCredential.FromStream(stream).CreateScoped(Scopes);
-            }
+            }*/
             using (service = new SheetsService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
@@ -71,10 +73,11 @@ namespace FragmentUpdater.Connections
         public static Dictionary<int, string> GetNewStringsFromSheet(string sheetname)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            using (Stream stream = assembly.GetManifestResourceStream(ConnectionJson))
+            credential = GoogleCredential.FromJson(Environment.GetEnvironmentVariable("SHEET_SERVICE_ACCOUNT"));
+            /*using (Stream stream = assembly.GetManifestResourceStream(ConnectionJson))
             {
                 credential = GoogleCredential.FromStream(stream).CreateScoped(Scopes);
-            }
+            }*/
             using (service = new SheetsService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
@@ -102,10 +105,14 @@ namespace FragmentUpdater.Connections
         public static Dictionary<int, List<int>> GetObjectsFromSheet(string sheetname)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            using (Stream stream = assembly.GetManifestResourceStream(ConnectionJson))
+            
+            credential = GoogleCredential.FromJson(Environment.GetEnvironmentVariable("SHEET_SERVICE_ACCOUNT"));
+            
+            /*using (Stream stream = assembly.GetManifestResourceStream(ConnectionJson))
             {
                 credential = GoogleCredential.FromStream(stream).CreateScoped(Scopes);
-            }
+            }*/
+            
             using (service = new SheetsService(new BaseClientService.Initializer()
             {
                 HttpClientInitializer = credential,
