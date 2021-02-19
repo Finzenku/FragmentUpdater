@@ -19,6 +19,7 @@ namespace FragmentUpdater
 
         static void Main(string[] args)
         {
+            
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             enc = Encoding.GetEncoding(932);
             Trace.Listeners.Clear();
@@ -80,7 +81,7 @@ namespace FragmentUpdater
                 {
                     UpdateISO(outputISO, obj);
                 }
-#if DEBUG
+#if Full_Version
                 Trace.WriteLine("Reading WIP patches from google..");
                 foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("WIP Patches"))
                 {
