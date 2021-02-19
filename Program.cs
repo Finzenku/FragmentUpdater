@@ -43,7 +43,8 @@ namespace FragmentUpdater
                    inputISO = vanillaISO,
                    outputISO = @"P:\DotHack\Fragment\Tellipatch\fragmentCopy.iso";
 #else
-            string inputISO, outputISO, loc = Assembly.GetExecutingAssembly().Location;
+            //string inputISO, outputISO, loc = Assembly.GetExecutingAssembly().Location;
+            string inputISO, outputISO, loc = System.AppContext.BaseDirectory;
             if (loc == "")
                 loc = @".\";
             if (args.Length == 0)
@@ -212,7 +213,8 @@ namespace FragmentUpdater
             }
             else
             {
-                string loc = Assembly.GetExecutingAssembly().Location;
+                // string loc = Assembly.GetExecutingAssembly().Location;
+                string loc = System.AppContext.BaseDirectory;
                 if (loc == "")
                     loc = @".\";
                 if (fileName.Contains(".iso"))
