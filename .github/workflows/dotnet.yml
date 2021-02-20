@@ -24,11 +24,11 @@ jobs:
       - name: Build Project
         run: dotnet build -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Build Windows files
-        run: dotnet publish -r win-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Build Mac files
-        run: dotnet publish -r osx-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r osx-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Build Linux files
-        run: dotnet publish -r linux-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r linux-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Zip builds
         shell: bash
         working-directory: ${{github.workspace}}/
