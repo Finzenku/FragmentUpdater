@@ -19,17 +19,6 @@ namespace FragmentUpdater
 
         static void Main(string[] args)
         {
-            string json = Environment.GetEnvironmentVariable("SHEET_SERVICE_ACCOUNT");
-
-            if (json == null)
-            {
-                Console.Write("was not able to read the secret");
-            }
-            else
-            {
-                Console.Write("the secret it " + json);
-            }
-
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             enc = Encoding.GetEncoding(932);
             Trace.Listeners.Clear();
