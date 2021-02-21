@@ -17,8 +17,13 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 5.0.x
+        
+      - name: Write Secret to file
+        shell: bash
         env:
-          SHEET_SERVICE_ACCOUNT: ${{secrets.SHEET_SERVICE_ACCOUNT}}  
+          SHEET_SERVICE_ACCOUNT: ${{ secrets.SHEET_SERVICE_ACCOUNT }}
+        working-directory: ${{github.workspace}}/Connections
+        run: echo "$SHEET_SERVICE_ACCOUNT" > fragment_strings.json
       - name: Restore dependencies
         run: dotnet restore
       - name: Build Project

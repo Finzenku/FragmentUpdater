@@ -20,13 +20,13 @@
     <UseAppHost>true</UseAppHost>
   </PropertyGroup>
 
-  <!--<ItemGroup>
+  <ItemGroup>
     <None Remove="Connections\fragment_strings.json" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Connections\fragment_strings.json" />
-  </ItemGroup>-->
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Google.Apis" Version="1.49.0" />
@@ -36,9 +36,9 @@
   </ItemGroup>
 
   
-  <!--<ItemGroup>
+  <ItemGroup>
     <Resource Include="Connections\fragment_strings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-  </ItemGroup>-->
+  </ItemGroup>
 </Project>
