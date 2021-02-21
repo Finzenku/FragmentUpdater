@@ -34,7 +34,7 @@ jobs:
         working-directory: ${{github.workspace}}/
         run: sh ${{github.workspace}}/archiveScript.sh
       - name: Build Windows files (Teli)
-        run: dotnet publish -r win-x64 -p:PublishSingleFile=true --self-contained true -c Release --no-restore  
+        run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore  
       - name: copy files (Teli)
         shell: bash
         working-directory: ${{github.workspace}}/builds
