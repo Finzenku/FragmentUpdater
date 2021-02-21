@@ -22,7 +22,7 @@ jobs:
       - name: Write Secret to file
         shell: bash
         working-directory: ${{github.workspace}}/Connections
-        run: echo $SHEET_SERVICE_ACCOUNT > fragment_strings.json
+        run: echo "$SHEET_SERVICE_ACCOUNT" > fragment_strings.json
       - name: Restore dependencies
         run: dotnet restore
       - name: Build Project
