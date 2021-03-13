@@ -28,10 +28,8 @@ jobs:
         run: dotnet restore
       - name: Build Project
         run: dotnet build -c Release --no-restore /p:DefineConstants=Full_Version
-      - name: Build Windows64 files
+      - name: Build Windows files
         run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
-      - name: Build Windows86 files
-        run: dotnet publish -r win-x86 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Build Mac files
         run: dotnet publish -r osx-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Build Linux files
@@ -54,20 +52,13 @@ jobs:
         shell: bash
         working-directory: ${{github.workspace}}/builds
         run: rm -Rf win-x64-teli
-      - name: Upload  Windows Build64 Artifact
+      - name: Upload  Windows Build Artifact
         uses: actions/upload-artifact@v2.2.2
         with:
             # Artifact name
           name: fragment-updater-win-x64.zip # optional, default is artifact
           # A file, directory or wildcard pattern that describes what to upload
           path: ${{github.workspace}}/builds/fragment-updater-win-x64.zip
-      - name: Upload  Windows Build86 Artifact
-        uses: actions/upload-artifact@v2.2.2
-        with:
-            # Artifact name
-          name: fragment-updater-win-x86.zip # optional, default is artifact
-          # A file, directory or wildcard pattern that describes what to upload
-          path: ${{github.workspace}}/builds/fragment-updater-win-x86.zip
       - name: Upload  Mac Build Artifact
         uses: actions/upload-artifact@v2.2.2
         with:
