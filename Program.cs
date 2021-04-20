@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Text;
 using FragmentUpdater.Connections;
 using FragmentUpdater.Models;
+using Serilog;
 
 namespace FragmentUpdater
 {
@@ -21,29 +19,18 @@ namespace FragmentUpdater
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             enc = Encoding.GetEncoding(932);
-            Trace.Listeners.Clear();
 
-            TextWriterTraceListener twt1 = new(@".\ViPatchLog.txt");
-            twt1.Name = "TextLogger";
-            twt1.TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime;
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console()
+                .WriteTo.File(Path.Combine(AppContext.BaseDirectory, "ViPatchLog.txt"), outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message}{NewLine}{Exception}")
+                .MinimumLevel.Information()
+                .CreateLogger();
 
-            ConsoleTraceListener ctl = new(false);
-            ctl.TraceOutputOptions = TraceOptions.DateTime;
-
-            Trace.Listeners.Add(twt1);
-            Trace.Listeners.Add(ctl);
-            Trace.AutoFlush = true;
-
-            Trace.WriteLine(DateTime.Now.ToString());
+            Log.Logger.Information("Beginning Vi's Fragment Updater");
 #if DEBUG
-            string vanillaISO = @"P:\DotHack\Fragment\Tellipatch\fragment.iso",
-                   coldbirdISO = @"P:\DotHack\Fragment\Fragment (Coldbird v08.13).iso",
-                   telliISO = @"P:\DotHack\Fragment\Tellipatch\dotHack Fragment (0.91 DEV).iso",
-                   aliceISO = @"P:\DotHack\Fragment\Tellipatch\fragmentAlice.iso",
-                   inputISO = vanillaISO,
+            string inputISO = @"P:\DotHack\Fragment\Tellipatch\fragment.iso",
                    outputISO = @"P:\DotHack\Fragment\Tellipatch\fragmentCopy.iso";
 #else
-            //string inputISO, outputISO, loc = Assembly.GetExecutingAssembly().Location;
             string inputISO, outputISO, loc = System.AppContext.BaseDirectory;
             if (loc == "")
                 loc = @".\";
@@ -70,33 +57,40 @@ namespace FragmentUpdater
                 if (File.Exists(inputISO))
                     CopyFile(inputISO, outputISO);
                 else
-                    Trace.WriteLine($"Could not find input file \"{inputISO}\" in the current directory.");
+                    Log.Logger.Error($"Could not find input file \"{inputISO}\" in the current directory.");
             }
             if (File.Exists(outputISO))
             {
-                Trace.WriteLine($"Writing patches to: {outputISO}");
-                Trace.WriteLine("Reading patches from google..");
-                foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet())
+                Log.Logger.Information($"Writing patches to: {outputISO}");
+                Log.Logger.Information($"Reading patches from Google..");
+                try
                 {
-                    UpdateISO(outputISO, obj);
-                }
+                    foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet())
+                    {
+                        UpdateISO(outputISO, obj);
+                    }
 #if Full_Version
-                Trace.WriteLine("Reading WIP patches from google..");
-                foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("WIP Patches"))
-                {
-                    UpdateISO(outputISO, obj);
-                }
-                Trace.WriteLine("Reading WIP image patches from google..");
-                foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("IMG Patches"))
-                {
-                    UpdateISO(outputISO, obj);
-                }
+                    //Console.WriteLine("Reading WIP patches from google..");
+                    foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("WIP Patches"))
+                    {
+                        UpdateISO(outputISO, obj);
+                    }
+                    //Console.WriteLine("Reading WIP image patches from google..");
+                    foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("IMG Patches"))
+                    {
+                        UpdateISO(outputISO, obj);
+                    }
 #endif
-                Trace.WriteLine("ISO patched successfully!");
+                }
+                catch (Exception e)
+                {
+                    Log.Logger.Error(e, "An error occured while reading patches from Google:");
+                }
+                Log.Logger.Information("Vi Patch process complete!");
             }
             else
             {
-                Trace.WriteLine($"Could not find output file \"{outputISO}\" in the current directory.");
+                Log.Logger.Error($"Could not find output file \"{outputISO}\" in the current directory.");
             }
         }
 
@@ -122,7 +116,7 @@ namespace FragmentUpdater
                     //If we already made the text pointer dictionary we don't need to redo any of this
                     if (!textPointerDictionaries.TryGetValue(objectType.TextSheetName, out offsetPairs))
                     {
-                        Trace.WriteLine($"Patching {objectType.Name} Text..");
+                        Log.Logger.Information($"Patching {objectType.Name} Text..");
                         Dictionary<int, string> objText = GoogleReader.GetNewStringsFromSheet($"{objectType.TextSheetName}");
                         offsetPairs = new Dictionary<int, int>();
                         int newoff = 0;
@@ -144,13 +138,13 @@ namespace FragmentUpdater
                             if (writeOnline)
                             {
                                 bw.BaseStream.Position = objectType.OnlineFile.ISOLocation + objectType.OnlineStringBaseAddress + newoff;
-                                //Trace.WriteLine($"{(objectType.OnlineStringBaseAddress + newoff).ToString("X")} => {kvp.Value}");
+                                //Console.WriteLine($"{(objectType.OnlineStringBaseAddress + newoff).ToString("X")} => {kvp.Value}");
                                 bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
                             }
                             newoff += enc.GetBytes(kvp.Value).Length;
                             if (newoff > objectType.StringByteLimit)
-                                Trace.WriteLine("Writing outside string bounds!");
-                            //Trace.WriteLine(objectType.OnlineStringBaseAddress.ToString("X8") +" "+newoff.ToString("X8"));
+                                Log.Logger.Warning("Writing outside data bounds!");
+                            //Console.WriteLine(objectType.OnlineStringBaseAddress.ToString("X8") +" "+newoff.ToString("X8"));
                         }
                         textPointerDictionaries.Add(objectType.TextSheetName,offsetPairs);
                     }
@@ -158,7 +152,7 @@ namespace FragmentUpdater
 
                 if (objectType.DataSheetName != "None")
                 {
-                    Trace.WriteLine($"Patching {objectType.Name} Data..");
+                    Log.Logger.Information($"Patching {objectType.Name} Data..");
                     var objs = GoogleReader.GetObjectsFromSheet($"{objectType.DataSheetName}");
                     foreach (KeyValuePair<int, List<int>> kvp in objs)
                     {
@@ -213,8 +207,7 @@ namespace FragmentUpdater
             }
             else
             {
-                // string loc = Assembly.GetExecutingAssembly().Location;
-                string loc = System.AppContext.BaseDirectory;
+                string loc = AppContext.BaseDirectory;
                 if (loc == "")
                     loc = @".\";
                 if (fileName.Contains(".iso"))
@@ -246,7 +239,7 @@ namespace FragmentUpdater
                     }
                 }
             }
-            Trace.WriteLine($"Could not find file: {fileName}");
+            Log.Logger.Error($"Could not find file: {fileName}");
             return -1;
         }
 
@@ -263,37 +256,13 @@ namespace FragmentUpdater
             return -1;
         }
 
-        private static void ReadSheets(DotHackObject objectType)
-        {
-            var itemtext = GoogleReader.GetNewStringsFromSheet($"{objectType.TextSheetName}");
-            int newoff = 0;
-            Dictionary<int, int> offsetPairs = new Dictionary<int, int>();
-            foreach (KeyValuePair<int, string> kvp in itemtext)
-            {
-                if (!offsetPairs.ContainsKey(kvp.Key)) offsetPairs.Add(kvp.Key, newoff);
-                Trace.WriteLine(kvp.Key.ToString("X") + "\t" + newoff.ToString("X") + "\t\"" + kvp.Value.Replace("\n", " ") + "\"");
-                newoff += enc.GetBytes(kvp.Value).Length;
-            }
-            var items2 = GoogleReader.GetObjectsFromSheet($"{objectType.DataSheetName}s");
-            foreach (KeyValuePair<int, List<int>> kvp in items2)
-            {
-                Trace.Write(kvp.Key.ToString("X"));
-                foreach (int p in kvp.Value)
-                {
-                    offsetPairs.TryGetValue(p, out int s);
-                    Trace.Write("\t" + (objectType.OfflineStringBaseAddress + objectType.OfflineFile.LiveMemoryOffset + p).ToString("X8") + " => " + (objectType.OfflineStringBaseAddress + objectType.OfflineFile.LiveMemoryOffset + s).ToString("X8"));
-                }
-                Trace.WriteLine("");
-            }
-        }
-
         private static void CopyFile(string inputFilePath, string outputFilePath)
         {
             if (File.Exists(outputFilePath))
                 File.Delete(outputFilePath);
             int bufferSize = 1024 * 1024;
             int progress = 0;
-            Trace.WriteLine($"Copying {inputFilePath} to {outputFilePath}");
+            Log.Logger.Information($"Copying {inputFilePath} to {outputFilePath}");
             using (FileStream fileStream = new FileStream(outputFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
             {
                 FileStream fs = new FileStream(inputFilePath, FileMode.Open, FileAccess.ReadWrite);
@@ -304,7 +273,7 @@ namespace FragmentUpdater
                 while ((bytesRead = fs.Read(bytes, 0, bufferSize)) > 0)
                 {
                     progress += bytesRead;
-                    Console.Write($"\r{progress.ToString("X8")} / {fs.Length.ToString("X8")} Bytes...  ");
+                    Console.Write($"\r{progress.ToString("X8")} / {fs.Length.ToString("X8")} bytes copied...  ");
                     fileStream.Write(bytes, 0, bytesRead);
                 }
                 Console.WriteLine("");
