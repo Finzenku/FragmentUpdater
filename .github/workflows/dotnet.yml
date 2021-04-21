@@ -29,19 +29,19 @@ jobs:
       - name: Build Project
         run: dotnet build -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Build Windows64 files
-        run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Build Windows86 files
-        run: dotnet publish -r win-x86 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r win-x86 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Build Mac files
-        run: dotnet publish -r osx-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r osx-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Build Linux files
-        run: dotnet publish -r linux-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r linux-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
       - name: Zip builds
         shell: bash
         working-directory: ${{github.workspace}}/
         run: sh ${{github.workspace}}/archiveScript.sh
       - name: Build Windows files (Teli)
-        run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:DebugType=None --self-contained true -c Release --no-restore  
+        run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore  
       - name: copy files (Teli)
         shell: bash
         working-directory: ${{github.workspace}}/builds
