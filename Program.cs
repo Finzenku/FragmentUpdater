@@ -69,7 +69,7 @@ namespace FragmentUpdater
                         file.ISOLocation = GetFileLocation(outputISO, file.FileName);
                     }
 
-                    foreach (DotHackPatch obj in PatchReader.GetObjectsFromPatchSheet())
+                    foreach (DotHackPatch obj in PatchHandler.GetObjectsFromPatchSheet())
                     {
                         UpdateISO(outputISO, obj);
                     }
@@ -85,12 +85,18 @@ namespace FragmentUpdater
                         UpdateISO(outputISO, obj);
                     }
 #endif
-                    Log.Logger.Information("Vi Patch process complete!");
                 }
                 catch (Exception e)
                 {
                     Log.Logger.Error(e, "An error occured while reading patches:");
                 }
+                finally
+                {
+                    Log.Logger.Information("Cleaning up patch files..");
+                    PatchHandler.CleanUp();
+                }
+
+                Log.Logger.Information("Vi Patch process complete!");
             }
             else
             {
@@ -112,7 +118,7 @@ namespace FragmentUpdater
                 if (patch.TextSheetName != "None" && !textPointerDictionaries.TryGetValue(patch.TextSheetName, out offsetPairs))
                 {
                     Log.Logger.Information($"Patching {patch.Name} Text..");
-                    Dictionary<int, string> pointerTextPairs = PatchReader.GetNewStringsFromSheet($"{patch.TextSheetName}");
+                    Dictionary<int, string> pointerTextPairs = PatchHandler.GetNewStringsFromSheet($"{patch.TextSheetName}");
                     offsetPairs = new Dictionary<int, int>();
                     int newoff = 0;
                     foreach (KeyValuePair<int, string> kvp in pointerTextPairs)
@@ -145,7 +151,7 @@ namespace FragmentUpdater
                 if (patch.DataSheetName != "None")
                 {
                     Log.Logger.Information($"Patching {patch.Name} Data..");
-                    var dataPatches = PatchReader.GetPointersFromSheet($"{patch.DataSheetName}");
+                    var dataPatches = PatchHandler.GetPointersFromSheet($"{patch.DataSheetName}");
                     foreach (KeyValuePair<int, List<int>> kvp in dataPatches)
                     {
                         for (int i = 0; i < kvp.Value.Count; i++)

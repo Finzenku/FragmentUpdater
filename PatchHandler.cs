@@ -5,7 +5,7 @@ using System.Globalization;
 
 namespace FragmentUpdater
 {
-    public static class PatchReader
+    public static class PatchHandler
     {
         public static List<DotHackPatch> GetObjectsFromPatchSheet(string patchSheet = "Patches")
         {
@@ -76,6 +76,11 @@ namespace FragmentUpdater
             }
 
             return objByOffset;
+        }
+
+        public static void CleanUp()
+        {
+            ExcelReader.DeleteWorkbook();
         }
     }
 }

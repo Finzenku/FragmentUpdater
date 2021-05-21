@@ -57,5 +57,11 @@ namespace FragmentUpdater.Connections
             }
             return cellValues;
         }
+
+        public static void DeleteWorkbook()
+        {
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+        }
     }
 }
