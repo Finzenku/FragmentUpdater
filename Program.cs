@@ -75,12 +75,12 @@ namespace FragmentUpdater
                     }
 #if Full_Version
                     //Console.WriteLine("Reading WIP patches from google..");
-                    foreach (DotHackObject obj in PatchReader.GetObjectsFromPatchSheet("WIP Patches"))
+                    foreach (DotHackPatch obj in PatchReader.GetObjectsFromPatchSheet("WIP Patches"))
                     {
                         UpdateISO(outputISO, obj);
                     }
                     //Console.WriteLine("Reading WIP image patches from google..");
-                    foreach (DotHackObject obj in PatchReader.GetObjectsFromPatchSheet("IMG Patches"))
+                    foreach (DotHackPatch obj in PatchReader.GetObjectsFromPatchSheet("IMG Patches"))
                     {
                         UpdateISO(outputISO, obj);
                     }
