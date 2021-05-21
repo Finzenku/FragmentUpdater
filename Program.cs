@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using FragmentUpdater.Connections;
 using FragmentUpdater.Models;
 using Serilog;
 
@@ -62,31 +61,36 @@ namespace FragmentUpdater
             if (File.Exists(outputISO))
             {
                 Log.Logger.Information($"Writing patches to: {outputISO}");
-                Log.Logger.Information($"Reading patches from Google..");
+                Log.Logger.Information($"Downloading patches from Google..");
                 try
                 {
-                    foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet())
+                    foreach (DotHackFile file in DotHackFiles.GetFiles())
+                    {
+                        file.ISOLocation = GetFileLocation(outputISO, file.FileName);
+                    }
+
+                    foreach (DotHackPatch obj in PatchReader.GetObjectsFromPatchSheet())
                     {
                         UpdateISO(outputISO, obj);
                     }
 #if Full_Version
                     //Console.WriteLine("Reading WIP patches from google..");
-                    foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("WIP Patches"))
+                    foreach (DotHackObject obj in PatchReader.GetObjectsFromPatchSheet("WIP Patches"))
                     {
                         UpdateISO(outputISO, obj);
                     }
                     //Console.WriteLine("Reading WIP image patches from google..");
-                    foreach (DotHackObject obj in GoogleReader.GetObjectsFromPatchSheet("IMG Patches"))
+                    foreach (DotHackObject obj in PatchReader.GetObjectsFromPatchSheet("IMG Patches"))
                     {
                         UpdateISO(outputISO, obj);
                     }
 #endif
+                    Log.Logger.Information("Vi Patch process complete!");
                 }
                 catch (Exception e)
                 {
-                    Log.Logger.Error(e, "An error occured while reading patches from Google:");
+                    Log.Logger.Error(e, "An error occured while reading patches:");
                 }
-                Log.Logger.Information("Vi Patch process complete!");
             }
             else
             {
@@ -94,67 +98,55 @@ namespace FragmentUpdater
             }
         }
 
-        private static void UpdateISO(string directory, DotHackObject objectType)
+        private static void UpdateISO(string directory, DotHackPatch patch)
         {
-            bool writeOffline = objectType.OfflineFile.FileName != DotHackFiles.NONE.FileName,
-                 writeOnline = objectType.OnlineFile.FileName != DotHackFiles.NONE.FileName;
-            if (writeOffline)
-            {
-                objectType.OfflineFile.ISOLocation = GetFileLocation(directory, objectType.OfflineFile.FileName);
-            }
-            if (writeOnline)
-            {
-                objectType.OnlineFile.ISOLocation = GetFileLocation(directory, objectType.OnlineFile.FileName);
-            }
+            bool writeOffline = patch.OfflineFile.FileName != DotHackFiles.NONE.FileName,
+                 writeOnline = patch.OnlineFile.FileName != DotHackFiles.NONE.FileName;
 
             using (FileStream isoStream = File.Open(directory, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
             using (BinaryWriter bw = new BinaryWriter(isoStream))
             {
                 Dictionary<int, int> offsetPairs = new Dictionary<int, int>();
-                if (objectType.TextSheetName != "None")
+
+                //If we already made the text pointer dictionary we don't need to redo any of this
+                if (patch.TextSheetName != "None" && !textPointerDictionaries.TryGetValue(patch.TextSheetName, out offsetPairs))
                 {
-                    //If we already made the text pointer dictionary we don't need to redo any of this
-                    if (!textPointerDictionaries.TryGetValue(objectType.TextSheetName, out offsetPairs))
+                    Log.Logger.Information($"Patching {patch.Name} Text..");
+                    Dictionary<int, string> pointerTextPairs = PatchReader.GetNewStringsFromSheet($"{patch.TextSheetName}");
+                    offsetPairs = new Dictionary<int, int>();
+                    int newoff = 0;
+                    foreach (KeyValuePair<int, string> kvp in pointerTextPairs)
                     {
-                        Log.Logger.Information($"Patching {objectType.Name} Text..");
-                        Dictionary<int, string> objText = GoogleReader.GetNewStringsFromSheet($"{objectType.TextSheetName}");
-                        offsetPairs = new Dictionary<int, int>();
-                        int newoff = 0;
-                        foreach (KeyValuePair<int, string> kvp in objText)
+                        if (patch.PointerOffsets.Length == 0)
                         {
-                            if (objectType.PointerOffsets.Length == 0)
-                            {
-                                newoff = kvp.Key;
-                            }
-                            if (!offsetPairs.ContainsKey(kvp.Key))
-                            {
-                                offsetPairs.Add(kvp.Key, newoff);
-                            }
-                            if (writeOffline)
-                            {
-                                bw.BaseStream.Position = objectType.OfflineFile.ISOLocation + objectType.OfflineStringBaseAddress + newoff;
-                                bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
-                            }
-                            if (writeOnline)
-                            {
-                                bw.BaseStream.Position = objectType.OnlineFile.ISOLocation + objectType.OnlineStringBaseAddress + newoff;
-                                //Console.WriteLine($"{(objectType.OnlineStringBaseAddress + newoff).ToString("X")} => {kvp.Value}");
-                                bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
-                            }
-                            newoff += enc.GetBytes(kvp.Value).Length;
-                            if (newoff > objectType.StringByteLimit)
-                                Log.Logger.Warning("Writing outside data bounds!");
-                            //Console.WriteLine(objectType.OnlineStringBaseAddress.ToString("X8") +" "+newoff.ToString("X8"));
+                            newoff = kvp.Key;
                         }
-                        textPointerDictionaries.Add(objectType.TextSheetName,offsetPairs);
+                        if (!offsetPairs.ContainsKey(kvp.Key))
+                        {
+                            offsetPairs.Add(kvp.Key, newoff);
+                        }
+                        if (writeOffline)
+                        {
+                            bw.BaseStream.Position = patch.OfflineFile.ISOLocation + patch.OfflineStringBaseAddress + newoff;
+                            bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
+                        }
+                        if (writeOnline)
+                        {
+                            bw.BaseStream.Position = patch.OnlineFile.ISOLocation + patch.OnlineStringBaseAddress + newoff;
+                            bw.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
+                        }
+                        newoff += enc.GetBytes(kvp.Value).Length;
+                        if (newoff > patch.StringByteLimit)
+                            Log.Logger.Warning("Writing outside data bounds!");
                     }
+                    textPointerDictionaries.Add(patch.TextSheetName,offsetPairs);
                 }
 
-                if (objectType.DataSheetName != "None")
+                if (patch.DataSheetName != "None")
                 {
-                    Log.Logger.Information($"Patching {objectType.Name} Data..");
-                    var objs = GoogleReader.GetObjectsFromSheet($"{objectType.DataSheetName}");
-                    foreach (KeyValuePair<int, List<int>> kvp in objs)
+                    Log.Logger.Information($"Patching {patch.Name} Data..");
+                    var dataPatches = PatchReader.GetPointersFromSheet($"{patch.DataSheetName}");
+                    foreach (KeyValuePair<int, List<int>> kvp in dataPatches)
                     {
                         for (int i = 0; i < kvp.Value.Count; i++)
                         {
@@ -166,12 +158,12 @@ namespace FragmentUpdater
                                 {
                                     if (writeOffline)
                                     {
-                                        bw.BaseStream.Position = objectType.OfflineFile.ISOLocation + objectType.OfflineBaseAddress + kvp.Key + i*4;
+                                        bw.BaseStream.Position = patch.OfflineFile.ISOLocation + patch.OfflineBaseAddress + kvp.Key + i*4;
                                         bw.Write(LittleEndian((p).ToString("X8")));
                                     }
                                     if (writeOnline)
                                     {
-                                        bw.BaseStream.Position = objectType.OnlineFile.ISOLocation + objectType.OnlineBaseAddress + kvp.Key + i*4;
+                                        bw.BaseStream.Position = patch.OnlineFile.ISOLocation + patch.OnlineBaseAddress + kvp.Key + i*4;
                                         bw.Write(LittleEndian((p).ToString("X8")));
                                     }
                                 }
@@ -180,13 +172,13 @@ namespace FragmentUpdater
                                     offsetPairs.TryGetValue(p, out int s);
                                     if (writeOffline)
                                     {
-                                        bw.BaseStream.Position = objectType.OfflineFile.ISOLocation + objectType.OfflineBaseAddress + kvp.Key + objectType.PointerOffsets[i];
-                                        bw.Write(LittleEndian((objectType.OfflineStringBaseAddress + objectType.OfflineFile.LiveMemoryOffset + s).ToString("X8")));
+                                        bw.BaseStream.Position = patch.OfflineFile.ISOLocation + patch.OfflineBaseAddress + kvp.Key + patch.PointerOffsets[i];
+                                        bw.Write(LittleEndian((patch.OfflineStringBaseAddress + patch.OfflineFile.LiveMemoryOffset + s).ToString("X8")));
                                     }
                                     if (writeOnline)
                                     {
-                                        bw.BaseStream.Position = objectType.OnlineFile.ISOLocation + objectType.OnlineBaseAddress + kvp.Key + objectType.PointerOffsets[i];
-                                        bw.Write(LittleEndian((objectType.OnlineStringBaseAddress + objectType.OnlineFile.LiveMemoryOffset + s).ToString("X8")));
+                                        bw.BaseStream.Position = patch.OnlineFile.ISOLocation + patch.OnlineBaseAddress + kvp.Key + patch.PointerOffsets[i];
+                                        bw.Write(LittleEndian((patch.OnlineStringBaseAddress + patch.OnlineFile.LiveMemoryOffset + s).ToString("X8")));
                                     }
                                 }
                             }
@@ -265,16 +257,18 @@ namespace FragmentUpdater
             Log.Logger.Information($"Copying {inputFilePath} to {outputFilePath}");
             using (FileStream fileStream = new FileStream(outputFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
             {
-                FileStream fs = new FileStream(inputFilePath, FileMode.Open, FileAccess.ReadWrite);
-                fileStream.SetLength(fs.Length);
-                int bytesRead = -1;
-                byte[] bytes = new byte[bufferSize];
-
-                while ((bytesRead = fs.Read(bytes, 0, bufferSize)) > 0)
+                using (FileStream fs = new FileStream(inputFilePath, FileMode.Open, FileAccess.ReadWrite))
                 {
-                    progress += bytesRead;
-                    Console.Write($"\r{progress.ToString("X8")} / {fs.Length.ToString("X8")} bytes copied...  ");
-                    fileStream.Write(bytes, 0, bytesRead);
+                    fileStream.SetLength(fs.Length);
+                    int bytesRead = -1;
+                    byte[] bytes = new byte[bufferSize];
+
+                    while ((bytesRead = fs.Read(bytes, 0, bufferSize)) > 0)
+                    {
+                        progress += bytesRead;
+                        Console.Write($"\r{progress.ToString("X8")} / {fs.Length.ToString("X8")} bytes copied...  ");
+                        fileStream.Write(bytes, 0, bytesRead);
+                    }
                 }
                 Console.WriteLine("");
             }

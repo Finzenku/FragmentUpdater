@@ -1,6 +1,6 @@
 ﻿namespace FragmentUpdater.Models
 {
-    public class DotHackObject
+    public class DotHackPatch
     {
         public string Name { get; set; }
         public string DataSheetName { get; set; }
