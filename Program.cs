@@ -79,11 +79,24 @@ namespace FragmentUpdater
                     {
                         UpdateISO(outputISO, obj);
                     }
-                    //Console.WriteLine("Reading WIP image patches from google..");
+                    //Console.WriteLine("Reading image patches from google..");
                     foreach (DotHackPatch obj in PatchHandler.GetObjectsFromPatchSheet("IMG Patches"))
                     {
                         UpdateISO(outputISO, obj);
                     }
+#endif
+#if DEBUG                    
+                    //Console.WriteLine("Reading WIP patches from google..");
+                    foreach (DotHackPatch obj in PatchHandler.GetObjectsFromPatchSheet("WIP Patches"))
+                    {
+                        UpdateISO(outputISO, obj);
+                    }
+                    //Console.WriteLine("Reading image patches from google..");
+                    foreach (DotHackPatch obj in PatchHandler.GetObjectsFromPatchSheet("IMG Patches"))
+                    {
+                        UpdateISO(outputISO, obj);
+                    }
+
 #endif
                 }
                 catch (Exception e)
