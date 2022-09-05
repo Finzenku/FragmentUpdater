@@ -45,7 +45,7 @@ jobs:
       - name: copy Tellipatch files
         shell: bash
         working-directory: ${{github.workspace}}/builds
-        run: cp -a ../bin/Release/net5.0/win-x64/publish/ win-x64-telli/
+        run: cp -a ../bin/Release/net6.0/win-x64/publish/ win-x64-telli/
       - name: zip Tellipatch build
         shell: bash
         working-directory: ${{github.workspace}}/builds
