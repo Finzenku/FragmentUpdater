@@ -40,20 +40,20 @@ jobs:
         shell: bash
         working-directory: ${{github.workspace}}/
         run: sh ${{github.workspace}}/archiveScript.sh
-      - name: Build Windows files (Teli)
+      - name: Build Windows (Tellipatch) files
         run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore  
-      - name: copy files (Teli)
+      - name: copy Tellipatch files
         shell: bash
         working-directory: ${{github.workspace}}/builds
-        run: cp -a ../bin/Release/net5.0/win-x64/publish/ win-x64-teli/
-      - name: zip files (Teli)
+        run: cp -a ../bin/Release/net5.0/win-x64/publish/ win-x64-telli/
+      - name: zip Tellipatch build
         shell: bash
         working-directory: ${{github.workspace}}/builds
-        run: zip -r -j fragment-updater-win-x64-teli.zip win-x64-teli/*
-      - name: remove build files (Teli)
+        run: zip -r -j fragment-updater-win-x64-telli.zip win-x64-telli/*
+      - name: remove Tellipatch build files
         shell: bash
         working-directory: ${{github.workspace}}/builds
-        run: rm -Rf win-x64-teli
+        run: rm -Rf win-x64-telli
      # - name: Upload  Windows Build64 Artifact
      #   uses: actions/upload-artifact@v2.2.2
      #   with:
