@@ -116,90 +116,89 @@ namespace FragmentUpdater
             bool writeOffline = patch.OfflineFile.FileName != DotHackFiles.NONE.FileName,
                  writeOnline = patch.OnlineFile.FileName != DotHackFiles.NONE.FileName;
 
-            BinaryWriter offlineWriter = new(fileStreams[patch.OfflineFile], enc, true);
-            BinaryWriter onlineWriter = new(fileStreams[patch.OnlineFile], enc, true);
-
-            Dictionary<int, int> offsetPairs = new Dictionary<int, int>();
-
-            //If we already made the text pointer dictionary we don't need to redo any of this
-            if (patch.TextSheetName != "None" && !textPointerDictionaries.TryGetValue(patch.TextSheetName, out offsetPairs))
+            using (BinaryWriter offlineWriter = new(fileStreams[patch.OfflineFile], enc, true))
+            using (BinaryWriter onlineWriter = new(fileStreams[patch.OnlineFile], enc, true))
             {
-                Log.Logger.Information($"Patching {patch.Name} Text..");
-                Dictionary<int, string> pointerTextPairs = PatchHandler.GetNewStringsFromSheet($"{patch.TextSheetName}");
-                offsetPairs = new Dictionary<int, int>();
-                int newoff = 0;
-                foreach (KeyValuePair<int, string> kvp in pointerTextPairs)
-                {
-                    if (patch.PointerOffsets.Length == 0)
-                    {
-                        newoff = kvp.Key;
-                    }
-                    if (!offsetPairs.ContainsKey(kvp.Key))
-                    {
-                        offsetPairs.Add(kvp.Key, newoff);
-                    }
-                    if (writeOffline)
-                    {
-                        offlineWriter.BaseStream.Position = patch.OfflineStringBaseAddress + newoff;
-                        offlineWriter.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
-                    }
-                    if (writeOnline)
-                    {
-                        onlineWriter.BaseStream.Position = patch.OnlineStringBaseAddress + newoff;
-                        onlineWriter.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
-                    }
-                    newoff += enc.GetBytes(kvp.Value).Length;
-                    if (newoff > patch.StringByteLimit)
-                        Log.Logger.Warning("Writing outside data bounds!");
-                }
-                textPointerDictionaries.Add(patch.TextSheetName, offsetPairs);
-            }
+                Dictionary<int, int> offsetPairs = new Dictionary<int, int>();
 
-            if (patch.DataSheetName != "None")
-            {
-                Log.Logger.Information($"Patching {patch.Name} Data..");
-                var dataPatches = PatchHandler.GetPointersFromSheet($"{patch.DataSheetName}");
-                foreach (KeyValuePair<int, List<int>> kvp in dataPatches)
+                //If we already made the text pointer dictionary we don't need to redo any of this
+                if (patch.TextSheetName != "None" && !textPointerDictionaries.TryGetValue(patch.TextSheetName, out offsetPairs))
                 {
-                    for (int i = 0; i < kvp.Value.Count; i++)
+                    Log.Logger.Information($"Patching {patch.Name} Text..");
+                    Dictionary<int, string> pointerTextPairs = PatchHandler.GetNewStringsFromSheet($"{patch.TextSheetName}");
+                    offsetPairs = new Dictionary<int, int>();
+                    int newoff = 0;
+                    foreach (KeyValuePair<int, string> kvp in pointerTextPairs)
                     {
-                        int p = kvp.Value[i];
-                        if (p != -1)
+                        if (patch.PointerOffsets.Length == 0)
                         {
-                            //If an object has no text associated, we write the value data directly to the address
-                            if (offsetPairs.Count == 0)
+                            newoff = kvp.Key;
+                        }
+                        if (!offsetPairs.ContainsKey(kvp.Key))
+                        {
+                            offsetPairs.Add(kvp.Key, newoff);
+                        }
+                        if (writeOffline)
+                        {
+                            offlineWriter.BaseStream.Position = patch.OfflineStringBaseAddress + newoff;
+                            offlineWriter.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
+                        }
+                        if (writeOnline)
+                        {
+                            onlineWriter.BaseStream.Position = patch.OnlineStringBaseAddress + newoff;
+                            onlineWriter.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
+                        }
+                        newoff += enc.GetBytes(kvp.Value).Length;
+                        if (newoff > patch.StringByteLimit)
+                            Log.Logger.Warning("Writing outside data bounds!");
+                    }
+                    textPointerDictionaries.Add(patch.TextSheetName, offsetPairs);
+                }
+
+                if (patch.DataSheetName != "None")
+                {
+                    Log.Logger.Information($"Patching {patch.Name} Data..");
+                    var dataPatches = PatchHandler.GetPointersFromSheet($"{patch.DataSheetName}");
+                    foreach (KeyValuePair<int, List<int>> kvp in dataPatches)
+                    {
+                        for (int i = 0; i < kvp.Value.Count; i++)
+                        {
+                            int p = kvp.Value[i];
+                            if (p != -1)
                             {
-                                if (writeOffline)
+                                //If an object has no text associated, we write the value data directly to the address
+                                if (offsetPairs.Count == 0)
                                 {
-                                    offlineWriter.BaseStream.Position = patch.OfflineBaseAddress + kvp.Key + i*4;
-                                    offlineWriter.Write(LittleEndian((p).ToString("X8")));
+                                    if (writeOffline)
+                                    {
+                                        offlineWriter.BaseStream.Position = patch.OfflineBaseAddress + kvp.Key + i*4;
+                                        offlineWriter.Write(LittleEndian((p).ToString("X8")));
+                                    }
+                                    if (writeOnline)
+                                    {
+                                        onlineWriter.BaseStream.Position = patch.OnlineBaseAddress + kvp.Key + i*4;
+                                        onlineWriter.Write(LittleEndian((p).ToString("X8")));
+                                    }
                                 }
-                                if (writeOnline)
+                                else
                                 {
-                                    onlineWriter.BaseStream.Position = patch.OnlineBaseAddress + kvp.Key + i*4;
-                                    onlineWriter.Write(LittleEndian((p).ToString("X8")));
-                                }
-                            }
-                            else
-                            {
-                                offsetPairs.TryGetValue(p, out int s);
-                                if (writeOffline)
-                                {
-                                    offlineWriter.BaseStream.Position = patch.OfflineBaseAddress + kvp.Key + patch.PointerOffsets[i];
-                                    offlineWriter.Write(LittleEndian((patch.OfflineStringBaseAddress + patch.OfflineFile.LiveMemoryOffset + s).ToString("X8")));
-                                }
-                                if (writeOnline)
-                                {
-                                    onlineWriter.BaseStream.Position = patch.OnlineBaseAddress + kvp.Key + patch.PointerOffsets[i];
-                                    onlineWriter.Write(LittleEndian((patch.OnlineStringBaseAddress + patch.OnlineFile.LiveMemoryOffset + s).ToString("X8")));
+                                    offsetPairs.TryGetValue(p, out int s);
+                                    if (writeOffline)
+                                    {
+                                        offlineWriter.BaseStream.Position = patch.OfflineBaseAddress + kvp.Key + patch.PointerOffsets[i];
+                                        offlineWriter.Write(LittleEndian((patch.OfflineStringBaseAddress + patch.OfflineFile.LiveMemoryOffset + s).ToString("X8")));
+                                    }
+                                    if (writeOnline)
+                                    {
+                                        onlineWriter.BaseStream.Position = patch.OnlineBaseAddress + kvp.Key + patch.PointerOffsets[i];
+                                        onlineWriter.Write(LittleEndian((patch.OnlineStringBaseAddress + patch.OnlineFile.LiveMemoryOffset + s).ToString("X8")));
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-            offlineWriter.Dispose();
-            onlineWriter.Dispose();
         }
 
         private static string CheckFilePath(string fileName)
