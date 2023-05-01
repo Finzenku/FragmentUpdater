@@ -19,15 +19,18 @@ namespace FragmentUpdater
             Log.Logger.Information("Beginning Vi's Fragment Updater");
 #if DEBUG
             string inputISO = @"P:\DotHack\Fragment\ViPatch\fragment.iso",
-                   outputISO = @"P:\DotHack\Fragment\ViPatch\fragmentCopy.iso";
+                   outputISO = @"P:\DotHack\Fragment\ViPatch\fragmentCopy.iso",
+                   foodEPath = @"P:\DotHack\Fragment\ViPatch\food_E.bin";
 #else
-            string inputISO, outputISO, loc = System.AppContext.BaseDirectory;
+            string inputISO, outputISO, loc = System.AppContext.BaseDirectory, foodEPath;
             if (loc == "")
                 loc = @".\";
+            loc = Path.GetDirectoryName(loc);
+            foodEPath = Path.Combine(loc, "food_E.bin");
             if (args.Length == 0)
             {
-                inputISO = Path.Combine(Path.GetDirectoryName(loc), "fragment.iso");
-                outputISO = Path.Combine(Path.GetDirectoryName(loc), "dotHack fragment (EN).iso");
+                inputISO = Path.Combine(loc, "fragment.iso");
+                outputISO = Path.Combine(loc, "dotHack fragment (EN).iso");
             }
             else if (args.Length == 1)
             {
@@ -55,6 +58,11 @@ namespace FragmentUpdater
                 using (UdfEditor editor = new(outputISO))
                 {
                     ViFragmentPatcher.PatchISO(editor);
+
+                    if (File.Exists(foodEPath))
+                    {
+                        EnglishGruntyFoodPatcher.PatchISO(editor, File.Open(foodEPath, FileMode.Open, FileAccess.ReadWrite));
+                    }
                 }
 
                 Log.Logger.Information("Patch process complete!");
