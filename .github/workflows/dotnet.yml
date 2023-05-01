@@ -27,33 +27,20 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
       - name: Build Project
-        run: dotnet build -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet build -c Release --no-restore
       - name: Build Windows64 files
-        run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore
       - name: Build Windows86 files
-        run: dotnet publish -r win-x86 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r win-x86 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore
       - name: Build Mac files
-        run: dotnet publish -r osx-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r osx-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore
       - name: Build Linux files
-        run: dotnet publish -r linux-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore /p:DefineConstants=Full_Version
+        run: dotnet publish -r linux-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore
       - name: Zip builds
         shell: bash
         working-directory: ${{github.workspace}}/
         run: sh ${{github.workspace}}/archiveScript.sh
-      - name: Build Windows (Tellipatch) files
-        run: dotnet publish -r win-x64 -p:PublishSingleFile=true /p:PublishTrimmed=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None --self-contained true -c Release --no-restore  
-      - name: Copy Tellipatch files
-        shell: bash
-        working-directory: ${{github.workspace}}/builds
-        run: cp -a ../bin/Release/net6.0/win-x64/publish/ win-x64-telli/
-      - name: Zip Tellipatch build
-        shell: bash
-        working-directory: ${{github.workspace}}/builds
-        run: zip -r -j fragment-updater-win-x64-telli.zip win-x64-telli/*
-      - name: Remove Tellipatch build files
-        shell: bash
-        working-directory: ${{github.workspace}}/builds
-        run: rm -Rf win-x64-telli
+        
      # - name: Upload  Windows Build64 Artifact
      #   uses: actions/upload-artifact@v2.2.2
      #   with:
@@ -84,14 +71,6 @@ jobs:
           # A file, directory or wildcard pattern that describes what to upload
      #     path: ${{github.workspace}}/builds/fragment-updater-linux-x64.zip
 
-
-     # - name: Upload Windows Build Artifact (Teli)
-     #   uses: actions/upload-artifact@v2.2.2
-     #   with:
-          # Artifact name
-     #     name: fragment-updater-win-x64-teli.zip # optional, default is artifact
-          # A file, directory or wildcard pattern that describes what to upload
-     #     path: ${{github.workspace}}/builds/fragment-updater-win-x64-teli.zip
      
       - name: Upload All Builds
         uses: actions/upload-artifact@v2.2.2
