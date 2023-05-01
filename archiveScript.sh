@@ -7,7 +7,6 @@ mkdir linux-x64
 mkdir win-x64
 mkdir osx-x64
 mkdir win-x86
-mkdir win-x64-teli
 
 cp -a ../bin/Release/net6.0/win-x64/publish/ win-x64/
 cp -a ../bin/Release/net6.0/linux-x64/publish/ linux-x64/
