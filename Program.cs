@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Text;
-using FragmentUpdater.Models;
+using FragmentUpdater.Patchers;
 using Ps2IsoTools.UDF;
 using Serilog;
 
@@ -11,14 +8,8 @@ namespace FragmentUpdater
 {
     class Program
     {
-        static Encoding enc;
-        private static Dictionary<string, Dictionary<int, int>> textPointerDictionaries;
-
         static void Main(string[] args)
         {
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            enc = Encoding.GetEncoding(932);
-
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.Console()
                 .WriteTo.File(Path.Combine(AppContext.BaseDirectory, "ViPatchLog.txt"), outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message}{NewLine}{Exception}")
@@ -50,13 +41,12 @@ namespace FragmentUpdater
             }
 #endif
 
-            textPointerDictionaries = new Dictionary<string, Dictionary<int, int>>();
             if (inputISO != outputISO)
             {
                 if (File.Exists(inputISO))
                     CopyFile(inputISO, outputISO);
                 else
-                    Log.Logger.Error($"Could not find input file \"{inputISO}\" in the current directory.");
+                    Log.Logger.Error($"Could not find input file \"{inputISO}\".");
             }
             if (File.Exists(outputISO))
             {
@@ -64,140 +54,14 @@ namespace FragmentUpdater
 
                 using (UdfEditor editor = new(outputISO))
                 {
-                    ApplyViGooglePatchs(editor);
+                    ViFragmentPatcher.PatchISO(editor);
                 }
 
-                Log.Logger.Information("Vi Patch process complete!");
+                Log.Logger.Information("Patch process complete!");
             }
             else
             {
-                Log.Logger.Error($"Could not find output file \"{outputISO}\" in the current directory.");
-            }
-        }
-
-        private static void ApplyViGooglePatchs(UdfEditor editor)
-        {
-            Dictionary<DotHackFile, Stream> fileStreams = new();
-            Log.Logger.Information($"Downloading patches from Google..");
-            try
-            {
-                foreach (DotHackFile file in DotHackFiles.GetFiles())
-                {
-                    var fileId = editor.GetFileByName(file.FileName);
-                    if (fileId is null)
-                        throw new ArgumentException($"Could not find file: {file.FileName}");
-                    fileStreams.Add(file, editor.GetFileStream(fileId));
-                }
-                fileStreams.Add(DotHackFiles.NONE, new MemoryStream());
-
-                foreach (DotHackPatch patch in PatchHandler.GetObjectsFromPatchSheet())
-                {
-                    UpdateISO(patch, fileStreams);
-                }
-
-                foreach (DotHackPatch patch in PatchHandler.GetObjectsFromPatchSheet("IMG Patches"))
-                {
-                    UpdateISO(patch, fileStreams);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Logger.Error(e, "An error occured while reading patches:");
-            }
-            finally
-            {
-                Log.Logger.Information("Cleaning up Google patch files..");
-                PatchHandler.CleanUp();
-            }
-        }
-
-        private static void UpdateISO(DotHackPatch patch, Dictionary<DotHackFile, Stream> fileStreams)
-        {
-            bool writeOffline = patch.OfflineFile.FileName != DotHackFiles.NONE.FileName,
-                 writeOnline = patch.OnlineFile.FileName != DotHackFiles.NONE.FileName;
-
-            using (BinaryWriter offlineWriter = new(fileStreams[patch.OfflineFile], enc, true))
-            using (BinaryWriter onlineWriter = new(fileStreams[patch.OnlineFile], enc, true))
-            {
-                Dictionary<int, int> offsetPairs = new Dictionary<int, int>();
-
-                //If we already made the text pointer dictionary we don't need to redo any of this
-                if (patch.TextSheetName != "None" && !textPointerDictionaries.TryGetValue(patch.TextSheetName, out offsetPairs))
-                {
-                    Log.Logger.Information($"Patching {patch.Name} Text..");
-                    Dictionary<int, string> pointerTextPairs = PatchHandler.GetNewStringsFromSheet($"{patch.TextSheetName}");
-                    offsetPairs = new Dictionary<int, int>();
-                    int newoff = 0;
-                    foreach (KeyValuePair<int, string> kvp in pointerTextPairs)
-                    {
-                        if (patch.PointerOffsets.Length == 0)
-                        {
-                            newoff = kvp.Key;
-                        }
-                        if (!offsetPairs.ContainsKey(kvp.Key))
-                        {
-                            offsetPairs.Add(kvp.Key, newoff);
-                        }
-                        if (writeOffline)
-                        {
-                            offlineWriter.BaseStream.Position = patch.OfflineStringBaseAddress + newoff;
-                            offlineWriter.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
-                        }
-                        if (writeOnline)
-                        {
-                            onlineWriter.BaseStream.Position = patch.OnlineStringBaseAddress + newoff;
-                            onlineWriter.Write(enc.GetBytes(kvp.Value.Replace("\n", "\0").Replace("`", "\n")));
-                        }
-                        newoff += enc.GetBytes(kvp.Value).Length;
-                        if (newoff > patch.StringByteLimit)
-                            Log.Logger.Warning("Writing outside data bounds!");
-                    }
-                    textPointerDictionaries.Add(patch.TextSheetName, offsetPairs);
-                }
-
-                if (patch.DataSheetName != "None")
-                {
-                    Log.Logger.Information($"Patching {patch.Name} Data..");
-                    var dataPatches = PatchHandler.GetPointersFromSheet($"{patch.DataSheetName}");
-                    foreach (KeyValuePair<int, List<int>> kvp in dataPatches)
-                    {
-                        for (int i = 0; i < kvp.Value.Count; i++)
-                        {
-                            int p = kvp.Value[i];
-                            if (p != -1)
-                            {
-                                //If an object has no text associated, we write the value data directly to the address
-                                if (offsetPairs.Count == 0)
-                                {
-                                    if (writeOffline)
-                                    {
-                                        offlineWriter.BaseStream.Position = patch.OfflineBaseAddress + kvp.Key + i*4;
-                                        offlineWriter.Write(LittleEndian((p).ToString("X8")));
-                                    }
-                                    if (writeOnline)
-                                    {
-                                        onlineWriter.BaseStream.Position = patch.OnlineBaseAddress + kvp.Key + i*4;
-                                        onlineWriter.Write(LittleEndian((p).ToString("X8")));
-                                    }
-                                }
-                                else
-                                {
-                                    offsetPairs.TryGetValue(p, out int s);
-                                    if (writeOffline)
-                                    {
-                                        offlineWriter.BaseStream.Position = patch.OfflineBaseAddress + kvp.Key + patch.PointerOffsets[i];
-                                        offlineWriter.Write(LittleEndian((patch.OfflineStringBaseAddress + patch.OfflineFile.LiveMemoryOffset + s).ToString("X8")));
-                                    }
-                                    if (writeOnline)
-                                    {
-                                        onlineWriter.BaseStream.Position = patch.OnlineBaseAddress + kvp.Key + patch.PointerOffsets[i];
-                                        onlineWriter.Write(LittleEndian((patch.OnlineStringBaseAddress + patch.OnlineFile.LiveMemoryOffset + s).ToString("X8")));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                Log.Logger.Error($"Could not find output file \"{outputISO}\".");
             }
         }
 
@@ -248,14 +112,5 @@ namespace FragmentUpdater
             }
         }
 
-        private static byte[] LittleEndian(string hexString)
-        {
-            byte[] result = new byte[hexString.Length / 2];
-            for (int i = 0; i < result.Length; i++)
-            {
-                result[result.Length -1 -i] = (byte)int.Parse(hexString.Substring(i*2,2), NumberStyles.HexNumber);
-            }
-            return result;
-        }
     }
 }
